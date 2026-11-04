@@ -7,52 +7,53 @@ Base atual: Spring Boot 4.1.1, Java 21, Maven. Já estão no `pom.xml`: Actuator
 - [x] Adicionar `spring-boot-starter-webmvc` (API REST; o Actuator sozinho não expõe controllers)
 - [x] Adicionar `spring-boot-starter-validation` (Bean Validation nos DTOs)
 - [x] Adicionar springdoc-openapi (Swagger UI), versão 3.1.1
-- [x] Adicionar Flyway (migrations do banco) e usar `ddl-auto=validate`
+- [x] Schema pelo JPA com `ddl-auto=update` (Flyway removido: as tabelas saem das anotações das entidades)
 - [x] Remover a senha em texto puro do `compose.yaml` e usar variáveis de ambiente (`.env` no `.gitignore`, modelo em `.env.example`)
 - [x] Criar `application-dev.properties` e `application-test.properties` (perfis)
 - [x] Definir `spring.application.name` e configurar timezone (UTC) para os timestamps
-- [ ] Revisar o `MonitoramentoApiApplicationTests` para ele subir o contexto com perfil de teste (pendente: precisa do Docker rodando)
+- [x] Revisar o `MonitoramentoApiApplicationTests` para ele subir o contexto com perfil de teste (o perfil `test` liga o Postgres do compose, que precisa do Docker rodando)
 
 ## 1. Estrutura (clean architecture)
 
-- [ ] Criar os pacotes: `domain`, `application`, `infrastructure`, `interfaces` (ou `web`)
-- [ ] `domain`: entidades e regra de alerta, sem anotações de framework
-- [ ] `application`: casos de uso (cadastrar API, executar checagem, avaliar alerta)
-- [ ] `application`: portas (interfaces) para repositório de APIs, repositório de checagens e cliente HTTP
-- [ ] `infrastructure`: adaptadores JPA, cliente HTTP (`RestClient`) e configuração do agendador
-- [ ] `interfaces`: controllers REST e DTOs
+- [x] Criar os pacotes: `domain`, `application`, `infrastructure`, `interfaces` (ou `web`)
+- [x] `domain`: entidades e regra de alerta, sem anotações de framework
+- [x] `application`: casos de uso (cadastrar API, executar checagem, avaliar alerta)
+- [x] `application`: portas (interfaces) para repositório de APIs, repositório de checagens e cliente HTTP
+- [x] `infrastructure`: adaptadores JPA, cliente HTTP (`RestClient`) e configuração do agendador
+- [x] `interfaces`: controllers REST e DTOs
 
 ## 2. Cadastro de APIs monitoradas (CRUD)
 
-- [ ] Entidade `MonitoredApi`: id, nome, URL, intervalo (segundos), status HTTP esperado, ativa (boolean), criada em
-- [ ] Validar: URL válida (http/https), intervalo mínimo, nome único
-- [ ] Endpoints: `POST /apis`, `GET /apis`, `GET /apis/{id}`, `PUT /apis/{id}`, `DELETE /apis/{id}`
-- [ ] Tratamento global de erros (`@RestControllerAdvice`) com respostas padronizadas (404, 400, 409)
-- [ ] Testes unitários dos casos de uso de CRUD
+- [x] Entidade `MonitoredApi`: id, nome, URL, intervalo (segundos), status HTTP esperado, ativa (boolean), criada em
+- [x] Validar: URL válida (http/https), intervalo mínimo, nome único
+- [x] Endpoints: `POST /apis`, `GET /apis`, `GET /apis/{id}`, `PUT /apis/{id}`, `DELETE /apis/{id}`
+- [x] Tratamento global de erros (`@RestControllerAdvice`) com respostas padronizadas (404, 400, 409), no formato `ProblemDetail`
+- [x] Testes unitários dos casos de uso de CRUD
 
 ## 3. Checagem periódica
 
-- [ ] Habilitar agendamento com `@EnableScheduling`
-- [ ] Agendador que busca as APIs ativas e dispara cada checagem no seu intervalo
-- [ ] Cliente HTTP com timeout de conexão e de leitura configuráveis
-- [ ] Registrar por checagem: API, status HTTP, tempo de resposta (ms), sucesso (boolean), erro (mensagem, se houver), data/hora
-- [ ] Tratar exceções de rede (timeout, DNS, conexão recusada) como falha, sem derrubar o agendador
-- [ ] Checagens em paralelo com limite, para uma API lenta não atrasar as outras
-- [ ] Testes do agendador com Mockito (cliente HTTP mockado)
+- [x] Habilitar agendamento com `@EnableScheduling`
+- [x] Agendador que busca as APIs ativas e dispara cada checagem no seu intervalo
+- [x] Cliente HTTP com timeout de conexão e de leitura configuráveis
+- [x] Registrar por checagem: API, status HTTP, tempo de resposta (ms), sucesso (boolean), erro (mensagem, se houver), data/hora
+- [x] Tratar exceções de rede (timeout, DNS, conexão recusada) como falha, sem derrubar o agendador
+- [x] Checagens em paralelo com limite, para uma API lenta não atrasar as outras
+- [x] Testes do agendador com Mockito (cliente HTTP mockado)
 
 ## 4. Regra de alerta
 
-- [ ] Contador de falhas consecutivas por API
-- [ ] Estado do serviço: `UP`, `DEGRADED` (uma ou duas falhas), `DOWN` (três falhas seguidas)
-- [ ] Voltar para `UP` na primeira checagem bem-sucedida e zerar o contador
-- [ ] Disparar evento/log quando o estado muda (`UP` → `DOWN` e `DOWN` → `UP`)
-- [ ] Os três limites (3 falhas, etc.) em configuração, não fixos no código
-- [ ] Testes unitários da regra: sequência de falhas, recuperação, falha intercalada com sucesso
+- [x] Contador de falhas consecutivas por API
+- [x] Estado do serviço: `UP`, `DEGRADED` (uma ou duas falhas), `DOWN` (três falhas seguidas)
+- [x] Voltar para `UP` na primeira checagem bem-sucedida e zerar o contador
+- [x] Disparar evento/log quando o estado muda (`UP` → `DOWN` e `DOWN` → `UP`) — hoje é log `INFO`, sem barramento de eventos
+- [x] Os três limites (3 falhas, etc.) em configuração, não fixos no código (`monitoramento.alerta.falhas-para-down`)
+- [x] Testes unitários da regra: sequência de falhas, recuperação, falha intercalada com sucesso
+- [ ] Restaurar o estado de saúde a partir do histórico ao reiniciar (hoje fica em memória: após reiniciar, todas as APIs voltam a `UP` até a próxima checagem)
 
 ## 5. Histórico (PostgreSQL)
 
-- [ ] Tabela `monitored_api` e tabela `health_check` (com índice em `api_id` + `checked_at`)
-- [ ] Repositório JPA com consulta das últimas 24 horas por API
+- [x] Tabela `monitored_api` e tabela `health_check` (com índice em `api_id` + `checked_at`)
+- [x] Repositório JPA com consulta das últimas 24 horas por API (`findByApiSince`; o chamador passa o `since`)
 - [ ] Política de retenção: job diário que apaga checagens com mais de N dias
 - [ ] Testes de repositório com Testcontainers (ou H2 em teste, se Testcontainers ficar pesado)
 
@@ -62,7 +63,7 @@ Base atual: Spring Boot 4.1.1, Java 21, Maven. Já estão no `pom.xml`: Actuator
 - [ ] `GET /apis/{id}/checks?from=&to=`: histórico para o gráfico de latência (últimas 24 horas por padrão)
 - [ ] `GET /apis/{id}/summary`: uptime e latência média/p95 no período
 - [ ] Liberar CORS para a origem do Angular (ex.: `http://localhost:4200`)
-- [ ] Configurar Spring Security: liberar os endpoints de leitura do painel e os de Actuator necessários, proteger o CRUD (ou documentar que é local)
+- [x] Configurar Spring Security: liberar os endpoints de leitura do painel e os de Actuator necessários, proteger o CRUD (ou documentar que é local) — projeto local: CRUD aberto, rotas desconhecidas negadas (`SecurityConfig`)
 - [ ] Documentação Swagger acessível em `/swagger-ui.html`
 
 ## 7. Métricas e observabilidade do próprio monitor
@@ -82,8 +83,8 @@ Base atual: Spring Boot 4.1.1, Java 21, Maven. Já estão no `pom.xml`: Actuator
 
 ## 9. Testes
 
-- [ ] Testes unitários da regra de alerta e dos casos de uso (JUnit 5 + Mockito)
-- [ ] Testes de controller com `@WebMvcTest` (validação e códigos HTTP)
+- [x] Testes unitários da regra de alerta e dos casos de uso (JUnit 5 + Mockito)
+- [x] Testes de controller com `@WebMvcTest` (validação e códigos HTTP)
 - [ ] Teste de integração do fluxo completo: cadastra API, checagem roda, estado muda (com Testcontainers)
 - [ ] Cobertura mínima definida e medida (JaCoCo)
 

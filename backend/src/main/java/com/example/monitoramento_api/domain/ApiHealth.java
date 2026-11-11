@@ -8,7 +8,7 @@ import java.util.Optional;
 public class ApiHealth {
 
 	private final AlertPolicy policy;
-	private HealthStatus status = HealthStatus.UP;
+	private HealthStatus status = HealthStatus.UNKNOWN;
 	private int consecutiveFailures;
 
 	public ApiHealth(AlertPolicy policy) {

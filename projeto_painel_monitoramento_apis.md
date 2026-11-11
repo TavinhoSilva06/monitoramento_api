@@ -17,7 +17,7 @@ Esse projeto cobre o lado de observabilidade que aparece em várias vagas (monit
 
 | Tecnologia | Para que serve no projeto | Vagas que pedem |
 |---|---|---|
-| Java 17+ e Spring Boot | Backend, agendamento das checagens, API para o frontend | Quase todas |
+| Java 21 e Spring Boot 4.1.1 | Backend, agendamento das checagens, API para o frontend | Quase todas |
 | Spring Boot Actuator e Micrometer | Métricas e endpoint de saúde do próprio sistema | 4DF Back End, DXC Backend |
 | Prometheus e Grafana | Coleta e visualização de métricas (ferramenta de referência para observabilidade) | 4DF Back End (equivalentes: Datadog, New Relic) |
 | Angular | Painel com lista de serviços e gráficos | 4DF Full Stack |
@@ -41,14 +41,20 @@ Esse projeto cobre o lado de observabilidade que aparece em várias vagas (monit
 - Frontend em Angular com **serviços** para chamadas HTTP e componentes separados por tela, com testes unitários dos serviços.
 - Comunicação por REST entre frontend e backend, com contrato documentado (OpenAPI/Swagger).
 
+## Estado atual (11/11/2026)
+
+- **Backend: completo** (seções 0 a 11 do [CHECKLIST_BACKEND.md](CHECKLIST_BACKEND.md)). CRUD de APIs, checagens periódicas, histórico com retenção, regra de alerta com restauração no reinício, endpoints do painel (status, histórico e resumo), CORS, métricas no Micrometer, logs em JSON, pilha completa no Docker Compose com Prometheus e Grafana, testes de integração com Testcontainers, CI no GitHub Actions e runbook. 75 testes passando, com 95,7% de cobertura de linhas.
+- **Pendências do backend que dependem de ação fora do código**: executar o workflow de CI no GitHub (depois do push) e capturar os prints do Grafana e do Swagger.
+- **Frontend Angular**: próxima etapa, começa agora que o backend está completo.
+
 ## Roteiro de desenvolvimento
 
-1. Criar o backend com CRUD de APIs monitoradas e testes da regra de alerta.
-2. Implementar o agendador de checagens e a gravação do histórico.
-3. Expor os endpoints REST e a documentação Swagger.
-4. Criar o painel Angular consumindo a API.
-5. Subir Prometheus e Grafana no Docker Compose e configurar um dashboard.
-6. Configurar o pipeline de CI e escrever o README com prints do painel.
+1. [x] Criar o backend com CRUD de APIs monitoradas e testes da regra de alerta.
+2. [x] Implementar o agendador de checagens e a gravação do histórico.
+3. [x] Expor os endpoints REST, a documentação Swagger e os endpoints de leitura para o painel.
+4. [ ] Criar o painel Angular consumindo a API.
+5. [x] Subir Prometheus e Grafana no Docker Compose e configurar um dashboard (backend completo; falta só a captura de tela).
+6. [~] Configurar o pipeline de CI e escrever o README com prints do painel. (CI e README prontos; falta executar o CI no GitHub e incluir os prints.)
 
 ## Diferenciais para destacar
 

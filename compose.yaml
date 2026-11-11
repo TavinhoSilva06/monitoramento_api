@@ -1,3 +1,5 @@
+# Sem perfil: so o PostgreSQL (o backend roda na maquina com ./mvnw spring-boot:run).
+# Pilha completa (backend, Prometheus e Grafana): docker compose --profile completo up -d --build
 services:
   postgres:
     image: 'postgres:latest'
@@ -7,3 +9,52 @@ services:
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}'
     ports:
       - '5432'
+    volumes:
+      # Postgres 18+ guarda os dados em um subdiretorio de /var/lib/postgresql
+      - postgres-dados:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-monitoramento} -d ${POSTGRES_DB:-monitoramento}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    profiles: ['completo']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Dentro da rede do compose o banco e acessado pelo nome do servico
+      SPRING_DOCKER_COMPOSE_ENABLED: 'false'
+      SPRING_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/${POSTGRES_DB:-monitoramento}'
+      SPRING_DATASOURCE_USERNAME: '${POSTGRES_USER:-monitoramento}'
+      SPRING_DATASOURCE_PASSWORD: '${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}'
+    ports:
+      - '8080:8080'
+
+  prometheus:
+    image: 'prom/prometheus:latest'
+    profiles: ['completo']
+    volumes:
+      - ./observabilidade/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
+    depends_on:
+      - backend
+
+  grafana:
+    image: 'grafana/grafana:latest'
+    profiles: ['completo']
+    environment:
+      - 'GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}'
+    volumes:
+      - ./observabilidade/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observabilidade/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '3000:3000'
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres-dados:

@@ -52,8 +52,16 @@ class RestClientHttpProbe implements HttpProbe {
 		return (System.nanoTime() - inicio) / 1_000_000;
 	}
 
+	/**
+	 * Usa a causa mais especifica (ex.: UnknownHostException, ConnectException). A mensagem do wrapper
+	 * de rede costuma ser so "...: null" para falhas de DNS.
+	 */
 	private static String mensagem(RestClientException e) {
-		String texto = e.getClass().getSimpleName() + ": " + e.getMessage();
+		Throwable causa = e.getMostSpecificCause();
+		Throwable alvo = causa == e ? e : causa;
+		String texto = alvo.getMessage() == null
+				? alvo.getClass().getSimpleName()
+				: alvo.getClass().getSimpleName() + ": " + alvo.getMessage();
 		return texto.length() > TAMANHO_MAXIMO_ERRO ? texto.substring(0, TAMANHO_MAXIMO_ERRO) : texto;
 	}
 

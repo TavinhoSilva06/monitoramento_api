@@ -124,6 +124,35 @@ class MonitoredApiControllerTest {
 		verify(servico).remover(1L);
 	}
 
+	@Test
+	void semContentTypeJsonRetorna415EmProblemDetail() throws Exception {
+		mvc.perform(post("/apis").contentType(MediaType.APPLICATION_FORM_URLENCODED).content("name=x"))
+				.andExpect(status().isUnsupportedMediaType())
+				.andExpect(jsonPath("$.status").value(415))
+				.andExpect(jsonPath("$.detail").value("Envie o corpo com Content-Type: application/json"))
+				.andExpect(jsonPath("$.trace").doesNotExist());
+	}
+
+	@Test
+	void jsonMalformadoRetorna400ProblemDetailSemTrace() throws Exception {
+		mvc.perform(post("/apis").contentType(MediaType.APPLICATION_JSON).content("{\"name\":"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Corpo da requisicao invalido")))
+				.andExpect(jsonPath("$.trace").doesNotExist());
+	}
+
+	@Test
+	void camposEmSnakeCaseRetornam400() throws Exception {
+		String snake = """
+				{"name": "API", "url": "https://api.exemplo.com", "interval_seconds": 30, "expected_status": 200}
+				""";
+
+		mvc.perform(post("/apis").contentType(MediaType.APPLICATION_JSON).content(snake))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Corpo da requisicao invalido")));
+	}
+
 	private static MonitoredApi api(Long id, String nome) {
 		return new MonitoredApi(id, nome, "https://api.exemplo.com/health", 30, 200, true, Instant.now());
 	}

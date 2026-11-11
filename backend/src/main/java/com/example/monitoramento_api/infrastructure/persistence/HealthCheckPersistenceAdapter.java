@@ -2,7 +2,9 @@ package com.example.monitoramento_api.infrastructure.persistence;
 
 import com.example.monitoramento_api.application.port.HealthCheckRepository;
 import com.example.monitoramento_api.domain.HealthCheck;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,10 +33,25 @@ class HealthCheckPersistenceAdapter implements HealthCheckRepository {
 	}
 
 	@Override
-	public List<HealthCheck> findByApiSince(Long apiId, Instant since) {
-		return jpa.findByApiIdAndCheckedAtAfterOrderByCheckedAtDesc(apiId, since).stream()
+	@Transactional(readOnly = true)
+	public List<HealthCheck> findEntre(Long apiId, Instant from, Instant to) {
+		return jpa.findByApiIdAndCheckedAtGreaterThanEqualAndCheckedAtLessThanOrderByCheckedAtDesc(apiId, from, to).stream()
 				.map(HealthCheckPersistenceAdapter::toDomain)
 				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<HealthCheck> findUltimas(Long apiId, int limite) {
+		return jpa.findByApiIdOrderByCheckedAtDesc(apiId, PageRequest.of(0, limite)).stream()
+				.map(HealthCheckPersistenceAdapter::toDomain)
+				.toList();
+	}
+
+	@Override
+	@Transactional
+	public int apagarAnterioresA(Instant limite) {
+		return jpa.apagarAnterioresA(limite);
 	}
 
 	private static HealthCheck toDomain(HealthCheckEntity entity) {

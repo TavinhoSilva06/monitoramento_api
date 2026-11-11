@@ -1,5 +1,6 @@
 package com.example.monitoramento_api.application;
 
+import com.example.monitoramento_api.application.port.HealthCheckMetrics;
 import com.example.monitoramento_api.application.port.HealthCheckRepository;
 import com.example.monitoramento_api.application.port.HttpProbe;
 import com.example.monitoramento_api.domain.AlertPolicy;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,14 +25,16 @@ class HealthCheckServiceTest {
 
 	private HttpProbe probe;
 	private HealthCheckRepository checks;
+	private HealthCheckMetrics metrics;
 	private HealthCheckService servico;
 
 	@BeforeEach
 	void setUp() {
 		probe = mock(HttpProbe.class);
 		checks = mock(HealthCheckRepository.class);
+		metrics = mock(HealthCheckMetrics.class);
 		when(checks.save(any())).thenAnswer(i -> i.getArgument(0));
-		servico = new HealthCheckService(probe, checks, new AlertPolicy(3));
+		servico = new HealthCheckService(probe, checks, new AlertPolicy(3), metrics);
 	}
 
 	@Test
@@ -40,6 +44,16 @@ class HealthCheckServiceTest {
 		servico.checar(api);
 
 		verify(checks).save(any(HealthCheck.class));
+	}
+
+	@Test
+	void registraMetricaDeCadaChecagem() {
+		HealthCheck resultado = falha();
+		when(probe.probe(api)).thenReturn(resultado);
+
+		servico.checar(api);
+
+		verify(metrics).registrar(api, resultado);
 	}
 
 	@Test
@@ -65,8 +79,73 @@ class HealthCheckServiceTest {
 	}
 
 	@Test
-	void apiSemChecagemEstaUp() {
-		assertThat(servico.estadoAtual(99L)).isEqualTo(HealthStatus.UP);
+	void apiSemChecagemEstaDesconhecida() {
+		assertThat(servico.estadoAtual(99L)).isEqualTo(HealthStatus.UNKNOWN);
+	}
+
+	@Test
+	void restauraDownAPartirDasUltimasFalhas() {
+		when(checks.findUltimas(api.id(), 3)).thenReturn(List.of(falha(), falha(), falha()));
+
+		servico.restaurar(api);
+
+		assertThat(servico.estadoAtual(api.id())).isEqualTo(HealthStatus.DOWN);
+	}
+
+	@Test
+	void restauraUpQuandoUltimaChecagemFoiSucesso() {
+		// Ordem da mais recente para a mais antiga: a ultima foi sucesso
+		when(checks.findUltimas(api.id(), 3)).thenReturn(List.of(sucesso(), falha(), falha()));
+
+		servico.restaurar(api);
+
+		assertThat(servico.estadoAtual(api.id())).isEqualTo(HealthStatus.UP);
+	}
+
+	@Test
+	void restauraDegradadaComUmaFalhaRecente() {
+		when(checks.findUltimas(api.id(), 3)).thenReturn(List.of(falha(), sucesso(), sucesso()));
+
+		servico.restaurar(api);
+
+		assertThat(servico.estadoAtual(api.id())).isEqualTo(HealthStatus.DEGRADED);
+	}
+
+	@Test
+	void restauracaoSemHistoricoContinuaDesconhecida() {
+		when(checks.findUltimas(api.id(), 3)).thenReturn(List.of());
+
+		servico.restaurar(api);
+
+		assertThat(servico.estadoAtual(api.id())).isEqualTo(HealthStatus.UNKNOWN);
+	}
+
+	@Test
+	void contaApisEmCadaEstado() {
+		MonitoredApi outra = new MonitoredApi(2L, "Outra", "https://outra.exemplo.com", 30, 200, true, Instant.now());
+		when(probe.probe(api)).thenReturn(falha());
+		when(probe.probe(outra)).thenReturn(sucesso());
+		for (int i = 0; i < 3; i++) {
+			servico.checar(api);
+		}
+		servico.checar(outra);
+
+		assertThat(servico.contarEstado(HealthStatus.DOWN)).isEqualTo(1);
+		assertThat(servico.contarEstado(HealthStatus.UP)).isEqualTo(1);
+		assertThat(servico.contarEstado(HealthStatus.DEGRADED)).isZero();
+	}
+
+	@Test
+	void esquecerRemoveEstadoDaApi() {
+		when(probe.probe(api)).thenReturn(falha());
+		for (int i = 0; i < 3; i++) {
+			servico.checar(api);
+		}
+
+		servico.esquecer(api.id());
+
+		assertThat(servico.estadoAtual(api.id())).isEqualTo(HealthStatus.UNKNOWN);
+		assertThat(servico.contarEstado(HealthStatus.DOWN)).isZero();
 	}
 
 	private static HealthCheck sucesso() {

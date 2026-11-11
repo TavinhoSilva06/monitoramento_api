@@ -13,9 +13,11 @@ import java.util.List;
 public class MonitoredApiService {
 
 	private final MonitoredApiRepository apis;
+	private final HealthCheckService checks;
 
-	public MonitoredApiService(MonitoredApiRepository apis) {
+	public MonitoredApiService(MonitoredApiRepository apis, HealthCheckService checks) {
 		this.apis = apis;
+		this.checks = checks;
 	}
 
 	public MonitoredApi criar(ApiCommand comando) {
@@ -60,6 +62,7 @@ public class MonitoredApiService {
 	public void remover(Long id) {
 		buscar(id);
 		apis.deleteById(id);
+		checks.esquecer(id);
 	}
 
 	private void garantirNomeLivre(String nome, Long idAtual) {

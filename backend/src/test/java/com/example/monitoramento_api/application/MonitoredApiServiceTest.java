@@ -21,12 +21,14 @@ import static org.mockito.Mockito.when;
 class MonitoredApiServiceTest {
 
 	private MonitoredApiRepository repositorio;
+	private HealthCheckService saude;
 	private MonitoredApiService servico;
 
 	@BeforeEach
 	void setUp() {
 		repositorio = mock(MonitoredApiRepository.class);
-		servico = new MonitoredApiService(repositorio);
+		saude = mock(HealthCheckService.class);
+		servico = new MonitoredApiService(repositorio, saude);
 	}
 
 	@Test
@@ -98,6 +100,7 @@ class MonitoredApiServiceTest {
 		servico.remover(1L);
 
 		verify(repositorio).deleteById(1L);
+		verify(saude).esquecer(1L);
 	}
 
 	@Test

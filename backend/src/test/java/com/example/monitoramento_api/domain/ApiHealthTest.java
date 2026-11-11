@@ -9,8 +9,13 @@ class ApiHealthTest {
 	private final ApiHealth health = new ApiHealth(new AlertPolicy(3));
 
 	@Test
+	void comecaDesconhecidaAntesDeQualquerChecagem() {
+		assertThat(health.status()).isEqualTo(HealthStatus.UNKNOWN);
+	}
+
+	@Test
 	void tresFalhasSeguidasDeixamApiDown() {
-		assertThat(health.register(false)).contains(new HealthTransition(HealthStatus.UP, HealthStatus.DEGRADED));
+		assertThat(health.register(false)).contains(new HealthTransition(HealthStatus.UNKNOWN, HealthStatus.DEGRADED));
 		assertThat(health.register(false)).isEmpty();
 		assertThat(health.register(false)).contains(new HealthTransition(HealthStatus.DEGRADED, HealthStatus.DOWN));
 
@@ -51,7 +56,8 @@ class ApiHealthTest {
 	}
 
 	@Test
-	void sucessoEmApiSaudavelNaoGeraTransicao() {
+	void primeiroSucessoMudaDeDesconhecidaParaUp() {
+		assertThat(health.register(true)).contains(new HealthTransition(HealthStatus.UNKNOWN, HealthStatus.UP));
 		assertThat(health.register(true)).isEmpty();
 		assertThat(health.status()).isEqualTo(HealthStatus.UP);
 	}

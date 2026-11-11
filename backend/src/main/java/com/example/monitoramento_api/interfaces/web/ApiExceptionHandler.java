@@ -5,6 +5,8 @@ import com.example.monitoramento_api.domain.ApiNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,6 +39,21 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(IllegalArgumentException.class)
 	ProblemDetail argumentoInvalido(IllegalArgumentException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+	}
+
+	// Content-Type diferente de application/json (ex.: form-data ou corpo sem tipo)
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	ProblemDetail tipoNaoSuportado(HttpMediaTypeNotSupportedException e) {
+		return ProblemDetail.forStatusAndDetail(
+				HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Envie o corpo com Content-Type: application/json");
+	}
+
+	// JSON malformado ou com campos que nao batem com o contrato (ex.: snake_case no lugar de camelCase)
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	ProblemDetail corpoInvalido(HttpMessageNotReadableException e) {
+		return ProblemDetail.forStatusAndDetail(
+				HttpStatus.BAD_REQUEST,
+				"Corpo da requisicao invalido: verifique o JSON e os nomes dos campos (camelCase)");
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

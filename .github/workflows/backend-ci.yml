@@ -1,0 +1,42 @@
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build, testes e cobertura
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar JDK 21 e cache do Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # O mvnw esta sem permissao de execucao no Git; o Linux do runner precisa dela
+      - name: Permissao de execucao do mvnw
+        run: chmod +x mvnw
+
+      # Os testes de integracao usam Testcontainers, que precisa do Docker (presente no ubuntu-latest)
+      - name: Build, testes e verificacao de cobertura
+        run: ./mvnw -B verify
+
+      - name: Publicar relatorios de testes e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-backend
+          path: |
+            backend/target/surefire-reports
+            backend/target/site/jacoco
+          if-no-files-found: warn
